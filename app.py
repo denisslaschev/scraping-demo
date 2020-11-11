@@ -10,6 +10,9 @@ BASE_URL = 'https://www.citilink.ru/catalog/mobile/smartfony/-moshhnye-smartfony
 
 
 class Product:
+    """
+    Product representation.
+    """
     def __init__(self, product_obj):
         self.id = product_obj['id']
         self.price = product_obj['price']
@@ -25,6 +28,9 @@ class Product:
 
 
 class PhonesSpider(scrapy.Spider):
+    """
+    Site crawler.
+    """
     name = 'phones'
     start_urls = [
         BASE_URL
@@ -32,16 +38,19 @@ class PhonesSpider(scrapy.Spider):
 
     def request(self, url, callback):
         """
-         wrapper for scrapy.request
+        Wrapper for scrapy.request to set cookies.
         """
         request = scrapy.Request(url=url, callback=callback)
-        request.cookies['new_design'] = 1
+        request.cookies['new_design'] = 0
         request.headers['User-Agent'] = (
             'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, '
             'like Gecko) Chrome/45.0.2454.85 Safari/537.36')
         return request
 
     def get_next_page(self, page):
+        """
+        Get next page URL.
+        """
         next_page = page.find('li', {'class': 'next'})
 
         if next_page:
@@ -49,6 +58,9 @@ class PhonesSpider(scrapy.Spider):
             return href['href']
 
     def parse_items(self, page):
+        """
+        Parse product items on the page.
+        """
         products = page.find_all('div', attrs={'data-product-id': True})
 
         for product in products:
@@ -59,6 +71,9 @@ class PhonesSpider(scrapy.Spider):
                 print(ex)
 
     def parse(self, response):
+        """
+        Parse response.
+        """
         page = soup(response.body, 'html.parser')
         self.parse_items(page)
         next_page = self.get_next_page(page)
