@@ -1,7 +1,7 @@
 import json
 import scrapy
+from scrapy.crawler import CrawlerProcess
 from bs4 import BeautifulSoup as soup
-from urllib.request import urlopen
 
 
 # BASE_URL = 'https://www.citilink.ru/catalog/mobile/smartfony/-moshhnye-smartfony/'
@@ -46,4 +46,13 @@ class PhonesSpider(scrapy.Spider):
 
 
 if __name__ == '__main__':
-    pass
+    process = CrawlerProcess({
+        'USER_AGENT': 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/34.0.1847.131 Safari/537.36',
+        'FEED_FORMAT': 'csv',
+        'FEED_URI': 'output.csv',
+        'DEPTH_LIMIT': 2,
+        'CLOSESPIDER_PAGECOUNT': 3,
+    })
+
+    process.crawl(PhonesSpider)
+    process.start()
