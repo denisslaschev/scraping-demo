@@ -1,4 +1,5 @@
 import json
+import scrapy
 from bs4 import BeautifulSoup as soup
 from urllib.request import urlopen
 
@@ -19,9 +20,14 @@ class Product:
         return 'ID: {0}, Brand: {1}, Name: {2}, Price: {3}, Club price {4} '.format(self.id, self.brand, self.name, self.price, self.club_price)
 
 
-def parse_site():
-    with urlopen(BASE_URL) as page:
-        page = soup(page.read(), 'html.parser')
+class PhonesSpider(scrapy.Spider):
+    name = 'phones'
+    start_urls = [
+        BASE_URL
+    ]
+
+    def parse_items(self, html):
+        page = soup(html, 'html.parser')
         products_list = page.find('div', {'class': 'product_category_list'})
         products = products_list.find_all('div', attrs={'data-product-id': True})
 
@@ -34,6 +40,10 @@ def parse_site():
         for item in items:
             print(item)
 
+    def parse(self, response):
+        print('Here we are and here response {0}'.format(response))
+        self.parse_items(response.body)
+
 
 if __name__ == '__main__':
-    parse_site()
+    pass
