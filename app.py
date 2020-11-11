@@ -1,11 +1,12 @@
+import csv
 import json
 import scrapy
 from scrapy.crawler import CrawlerProcess
 from bs4 import BeautifulSoup as soup
 
 
-# BASE_URL = 'https://www.citilink.ru/catalog/mobile/smartfony/-moshhnye-smartfony/'
-BASE_URL = 'https://www.citilink.ru/catalog/mobile/smartfony/-moshhnye-smartfony?available=1&status=55395790&p=3'
+items = []
+BASE_URL = 'https://www.citilink.ru/catalog/mobile/smartfony/-moshhnye-smartfony?available=1&status=55395790&p=1'
 
 
 class Product:
@@ -19,6 +20,9 @@ class Product:
     def __repr__(self):
         return 'ID: {0}, Brand: {1}, Name: {2}, Price: {3}, Club price {4} '.format(self.id, self.brand, self.name, self.price, self.club_price)
 
+    def to_list(self):
+        return [self.id, self.price, self.club_price, self.brand, self.name]
+
 
 class PhonesSpider(scrapy.Spider):
     name = 'phones'
@@ -26,33 +30,57 @@ class PhonesSpider(scrapy.Spider):
         BASE_URL
     ]
 
-    def parse_items(self, html):
-        page = soup(html, 'html.parser')
-        products_list = page.find('div', {'class': 'product_category_list'})
-        products = products_list.find_all('div', attrs={'data-product-id': True})
+    def request(self, url, callback):
+        """
+         wrapper for scrapy.request
+        """
+        request = scrapy.Request(url=url, callback=callback)
+        request.cookies['new_design'] = 1
+        request.headers['User-Agent'] = (
+            'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, '
+            'like Gecko) Chrome/45.0.2454.85 Safari/537.36')
+        return request
 
-        items = []
+    def get_next_page(self, page):
+        next_page = page.find('li', {'class': 'next'})
+
+        if next_page:
+            href = next_page.find('a')
+            return href['href']
+
+    def parse_items(self, page):
+        products = page.find_all('div', attrs={'data-product-id': True})
 
         for product in products:
-            data_params = json.loads(product['data-params'])
-            items.append(Product(data_params))
-
-        for item in items:
-            print(item)
+            try:
+                data_params = json.loads(product['data-params'])
+                items.append(Product(data_params))
+            except Exception as ex:
+                print(ex)
 
     def parse(self, response):
-        print('Here we are and here response {0}'.format(response))
-        self.parse_items(response.body)
+        page = soup(response.body, 'html.parser')
+        self.parse_items(page)
+        next_page = self.get_next_page(page)
+
+        if next_page:
+            yield scrapy.Request(next_page, callback=self.parse)
 
 
 if __name__ == '__main__':
     process = CrawlerProcess({
         'USER_AGENT': 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/34.0.1847.131 Safari/537.36',
-        'FEED_FORMAT': 'csv',
-        'FEED_URI': 'output.csv',
-        'DEPTH_LIMIT': 2,
-        'CLOSESPIDER_PAGECOUNT': 3,
+        'DEPTH_LIMIT': 10,
+        'CLOSESPIDER_PAGECOUNT': 10,
     })
 
     process.crawl(PhonesSpider)
     process.start()
+
+    for item in items:
+        print(item)
+
+    with open('result.csv', 'w') as csv_file:
+        writer = csv.writer(csv_file, quoting=csv.QUOTE_ALL)
+        for item in items:
+            writer.writerow(item.to_list())
