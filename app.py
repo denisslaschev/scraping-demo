@@ -51,11 +51,16 @@ class PhonesSpider(scrapy.Spider):
         """
         Get next page URL.
         """
+        # Old UI
         next_page = page.find('li', {'class': 'next'})
-
         if next_page:
             href = next_page.find('a')
             return href['href']
+
+        # New UI
+        next_page = page.find('a', {'class': 'PaginationWidget__page_next'})
+        if next_page:
+            return next_page['href']
 
     def parse_items(self, page):
         """
